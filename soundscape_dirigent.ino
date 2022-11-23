@@ -16,6 +16,7 @@
 //   instrument 12 -> pin 13;
 // Maximaal zijn er dus 12 instrumenten beschikbaar
 
+// MIDI settings
 #define MIDI_BAUD_RATE 31250 // Standaard baud rate voor MIDI devices
 #define MIDI_CHANNEL 16 // Het afgesproken MIDI channel om MIDI commands te ontvangen
 #define NOTE_ON 144 // Het afgesproken command om een instrument een puls te geven
@@ -25,10 +26,9 @@
 // ...
 // instrument  12 : 71
 
-
-// Pulsduur in microseconde
+// Timing settings
 #define LOOP_TIME 1000 // vaste tijd in microsec. voor één loop iteratie
-#define PULSE_TIME 5 // Aantal loop iteraties 
+#define PULSE_TIME 5 // Aantal loop iteraties voor een puls 
 #define MAX_DELAY_MICROSECONDS 16383 // om delayMicroseconds te kunnen gebruiken
 
 // Globale variabelen
@@ -61,7 +61,7 @@ void setup() {
 void loop() {
   // Meet de process tijd
   unsigned long start = micros();
-  // Verwerk de MIDI commands
+  // Ontvang en verwerk MIDI commands
   if (Serial1.available() > 2) { // Als er minstens 3 bytes beschikbaar zijn
     byte command = Serial1.read();
     byte note = Serial1.read();
@@ -88,10 +88,13 @@ void loop() {
     }
   }
   // Delay voor de volgende loop
-  unsigned long delayTime = LOOP_TIME - (micros() - start);
-  if (delayTime <= MAX_DELAY_MICROSECONDS) {
-    delayMicroseconds(delayTime);
-  } else {
-    delay(delayTime / 1000);
+  unsigned long processTime = micros() - start;
+  if (processTime < LOOP_TIME) {
+    unsigned long delayTime = LOOP_TIME - processTime;
+    if (delayTime <= MAX_DELAY_MICROSECONDS) {
+      delayMicroseconds(delayTime);
+    } else {
+      delay(delayTime / 1000);
+    }
   }
 }// Einde van de `loop()` functie
