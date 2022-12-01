@@ -30,7 +30,7 @@
 #define PITCH_BEND            0b11100000 // 224
 #define NON_MUSICAL           0b11110000 // 240
 
-#define BASE_NOTE 36 // Noot om instrument 1 aan te sturen. Dus bv:
+#define BASE_NOTE 31 // Noot om instrument 1 aan te sturen. Dus bv:
 // instrument   1 : 60
 // instrument   2 : 61
 // ...
@@ -48,7 +48,7 @@ typedef struct MIDI_Command {
 };
 
 // Globale variabelen
-unsigned int pulses[MAX_PIN]; // Item 0 en 1 zullen nooit worden gebruikt
+unsigned int pulses[MAX_PIN] = {0}; // Item 0 en 1 zullen nooit worden gebruikt
 
 /*
  * De `setup()` functie wordt één keer uitgevoerd na opstarten of een reset
@@ -81,7 +81,7 @@ void loop() {
     MIDI_Command cmd;
 
     byte recieved = Serial1.read();
-    if (recieved > 0b10000000) {
+    if (recieved > 127) {
       cmd.type = recieved & 0b11110000;
       cmd.channel = recieved & 0b00001111;
       cmd.params[0] = Serial1.read();
