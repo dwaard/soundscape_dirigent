@@ -18,9 +18,19 @@
 
 // MIDI settings
 #define MIDI_BAUD_RATE 31250 // Standaard baud rate voor MIDI devices
-#define MIDI_CHANNEL 16 // Het afgesproken MIDI channel om MIDI commands te ontvangen
-#define NOTE_ON 144 // Het afgesproken command om een instrument een puls te geven
-#define BASE_NOTE 60 // Noot om instrument 1 aan te sturen. Dus:
+#define MIDI_CHANNEL 9 // Het afgesproken MIDI channel om MIDI commands te ontvangen (0..15)
+
+// MIDI commands
+#define NOTE_OFF              0b10000000 // 128
+#define NOTE_ON               0b10010000 // 144 Het afgesproken command om een instrument een puls te geven
+#define AFTERTOUCH            0b10100000 // 160
+#define CONTINUOUS_CONTROLLER 0b10110000 // 176
+#define PATCH_CHANGE          0b11000000 // 192
+#define CHANNEL_PRESSURE      0b11010000 // 208
+#define PITCH_BEND            0b11100000 // 224
+#define NON_MUSICAL           0b11110000 // 240
+
+#define BASE_NOTE 36 // Noot om instrument 1 aan te sturen. Dus bv:
 // instrument   1 : 60
 // instrument   2 : 61
 // ...
@@ -28,8 +38,14 @@
 
 // Timing settings
 #define LOOP_TIME 1000 // vaste tijd in microsec. voor één loop iteratie
-#define PULSE_TIME 5 // Aantal loop iteraties voor een puls 
+#define PULSE_TIME 25 // Aantal loop iteraties voor een puls 
 #define MAX_DELAY_MICROSECONDS 16383 // om delayMicroseconds te kunnen gebruiken
+
+typedef struct MIDI_Command {
+  byte channel;
+  byte type;
+  byte params[2];
+};
 
 // Globale variabelen
 unsigned int pulses[MAX_PIN]; // Item 0 en 1 zullen nooit worden gebruikt
@@ -53,7 +69,6 @@ void setup() {
   }
 } // Einde van de `setup()` functie
 
-
 /*
  * De `loop()` functie wordt iedere keer herhaald totdat de Arduino wordt 
  * uitgezet of gereset.
@@ -62,22 +77,40 @@ void loop() {
   // Meet de process tijd
   unsigned long start = micros();
   // Ontvang en verwerk MIDI commands
-  if (Serial1.available() > 2) { // Als er minstens 3 bytes beschikbaar zijn
-    byte command = Serial1.read();
-    byte note = Serial1.read();
-    byte velocity = Serial1.read();
-    byte channel = command && 0b00001111;
-    if (channel == (MIDI_CHANNEL - 1)) {
-      command = command && 0b11110000;
-      if (command == NOTE_ON) {
-        pulses[PIN_OFFSET + note - BASE_NOTE] = PULSE_TIME;
-      }
+  if (Serial1.available()) {
+    MIDI_Command cmd;
+
+    byte recieved = Serial1.read();
+    if (recieved > 0b10000000) {
+      cmd.type = recieved & 0b11110000;
+      cmd.channel = recieved & 0b00001111;
+      cmd.params[0] = Serial1.read();
+      if (cmd.type != PATCH_CHANGE && cmd.type != CHANNEL_PRESSURE ) {
+        cmd.params[1] = Serial1.read();
+      }      
       #ifdef PRINT
-        Serial.print("Instrument ");
-        Serial.println(note - BASE_NOTE + 1);
+        if (cmd.type != NON_MUSICAL) { // Filter dit command (komt vaak voor)
+          Serial.print("Channel ");
+          Serial.print(cmd.channel);
+          Serial.print("; Type ");
+          Serial.print(cmd.type);
+          Serial.print("; Note ");
+          Serial.println(cmd.params[0]);
+        }
       #endif
+      if (cmd.channel == (MIDI_CHANNEL) && cmd.type == NOTE_ON) {
+        int index = PIN_OFFSET + cmd.params[0] - BASE_NOTE;
+        #ifdef PRINT
+        Serial.print("PULSE: ");
+        Serial.println(index);
+        #endif
+        if (index < MAX_PIN) {
+          pulses[index] = PULSE_TIME;
+        }
+      }
     }
   }
+
   // De outputs aansturen
   for (int n = PIN_OFFSET; n < MAX_PIN; n++) {
     if (pulses[n] > 0) {
@@ -87,6 +120,7 @@ void loop() {
       digitalWrite(n, LOW);
     }
   }
+
   // Delay voor de volgende loop
   unsigned long processTime = micros() - start;
   if (processTime < LOOP_TIME) {
@@ -97,4 +131,10 @@ void loop() {
       delay(delayTime / 1000);
     }
   }
+  #ifdef PRINT
+  else {
+    Serial.print("OVER TIME LIMIT: ");
+    Serial.println(processTime);
+  }    
+  #endif
 }// Einde van de `loop()` functie
