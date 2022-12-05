@@ -39,6 +39,8 @@ typedef struct MIDI_Command {
 #define isMidiCommand(cmd) (cmd > 127)
 // Macro dat bepaalt of een MIDI command een 2e parameter heeft
 #define hasSecondParam(cmd) (cmd != PATCH_CHANGE && cmd != CHANNEL_PRESSURE)
+// Macro dat bepaalt welke command(s) en/of channel(s) voor een trigger zorgen 
+#define isOutputTrigger(cmd) (cmd.channel == MIDI_CHANNEL && (cmd.type == NOTE_ON || cmd.type == NOTE_OFF))
 
 // De mapping van notes naar pins. De array is 128 elementen, corresponderedend met
 // het aantal mogelijke noten. De inhoud van elk element is een pin nummer. Als de noot
@@ -95,7 +97,7 @@ void loop() {
         cmd.params[1] = Serial1.read();
       }
       // Als er een afgesproken command op het afgesproken channel is ontvangen...
-      if (cmd.channel == MIDI_CHANNEL && (cmd.type == NOTE_ON || cmd.type == NOTE_OFF)) {
+      if (isOutputTrigger(cmd)) {
         // Lees de aan te sturen pin nummer uit de notes array
         int index = notes[cmd.params[0]];
         // Zet die pin dan aan door de notes array te vullen
