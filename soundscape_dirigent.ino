@@ -36,9 +36,9 @@ typedef struct MIDI_Command {
 #define MAX_PIN 13 // Laatste bruikbare pin
 
 // Macro dat bepaalt of een ontvangen byte een MIDI command is
-#define isMidiCommand(cmd) (cmd > 127)
+#define isMidiCommand(recieved) (recieved > 127)
 // Macro dat bepaalt of een MIDI command een 2e parameter heeft
-#define hasSecondParam(cmd) (cmd != PATCH_CHANGE && cmd != CHANNEL_PRESSURE)
+#define hasSecondParam(type) (type != PATCH_CHANGE && type != CHANNEL_PRESSURE)
 // Macro dat bepaalt welke command(s) en/of channel(s) voor een trigger zorgen 
 #define isOutputTrigger(cmd) (cmd.channel == MIDI_CHANNEL && (cmd.type == NOTE_ON || cmd.type == NOTE_OFF))
 
